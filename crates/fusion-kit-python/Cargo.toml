@@ -1,0 +1,20 @@
+[package]
+name = "fusion-kit-python"
+description = "PyO3 bindings for fusion-kit-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+fusion-kit-core.workspace = true
+pyo3.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

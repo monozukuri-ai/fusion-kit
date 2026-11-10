@@ -1,0 +1,11 @@
+/.internal/
+__pycache__/
+.venv/
+/target/
+/dist/
+/build/
+/.pytest_cache/
+/.ruff_cache/
+/.mypy_cache/
+/python/fusion_kit/*.so
+/python/fusion_kit/*.pyd

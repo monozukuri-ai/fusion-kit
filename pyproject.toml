@@ -1,0 +1,84 @@
+[build-system]
+requires = ["maturin>=1.14,<2"]
+build-backend = "maturin"
+
+[project]
+name = "fusion-kit"
+dynamic = ["version"]
+description = "Rust-backed reader for Autodesk Fusion F3D and F3Z archives"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.txt", "RUST_STDLIB_COPYRIGHT.html"]
+requires-python = ">=3.11"
+dependencies = []
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Typing :: Typed",
+]
+
+[project.scripts]
+fusion-kit = "fusion_kit.cli:main"
+
+[dependency-groups]
+dev = [
+    "maturin>=1.14,<2",
+    "mypy>=1.19,<2",
+    "pytest>=8,<10",
+    "ruff>=0.14,<1",
+]
+
+[tool.maturin]
+manifest-path = "crates/fusion-kit-python/Cargo.toml"
+python-source = "python"
+module-name = "fusion_kit._native"
+bindings = "pyo3"
+locked = true
+include = [
+    { path = "rust-toolchain.toml", format = "sdist" },
+    { path = "docs/*.md", format = "sdist" },
+    { path = "tests/python/*.py", format = "sdist" },
+    { path = "tests/typing/*.py", format = "sdist" },
+    { path = "examples/*.py", format = "sdist" },
+]
+exclude = [
+    ".internal/**",
+    "scripts/**",
+    ".venv/**",
+    "target/**",
+    "**/__pycache__/**",
+    "**/.mypy_cache/**",
+    "**/*.pyc",
+]
+
+[tool.maturin.sbom]
+rust = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+addopts = "--import-mode=importlib"
+
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "Cargo.toml" },
+    { file = "Cargo.lock" },
+    { file = "rust-toolchain.toml" },
+    { file = "crates/**/Cargo.toml" },
+    { file = "crates/**/*.rs" },
+]
+
+[tool.ruff]
+target-version = "py311"
+extend-exclude = ["target"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["python/fusion_kit", "examples", "tests/typing"]
