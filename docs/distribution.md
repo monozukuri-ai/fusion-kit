@@ -1,33 +1,35 @@
-# インストール
+# Installation
 
-fusion-kitは通常版のCPython 3.11以上を対象とします。wheelにはRust製の拡張モジュールが含まれます。
+fusion-kit supports standard CPython 3.11 and later. Wheels include the native extension built with Rust.
 
-## wheelからインストール
+## Install from a wheel
 
-環境に対応する `cp311-abi3` wheelを選びます。
+Choose the `cp311-abi3` wheel for your platform.
 
-| 環境 | wheelのプラットフォームタグ | インストール試験を行ったCPython |
+| Platform | Wheel platform tag | CPython versions tested |
 |---|---|---|
-| Linux x86_64、glibc 2.28以降 | `manylinux_2_28_x86_64` | 3.11〜3.15 |
-| Windows x86_64 | `win_amd64` | 3.11、3.15 |
-| macOS arm64 | `macosx_11_0_arm64` | 3.11、3.15 |
-| macOS x86_64 | `macosx_11_0_x86_64` | 3.11、3.15 |
+| Linux x86_64 with glibc 2.28 or later | `manylinux_2_28_x86_64` | 3.11–3.15 |
+| Windows x86_64 | `win_amd64` | 3.11, 3.15 |
+| macOS arm64 | `macosx_11_0_arm64` | 3.11, 3.15 |
+| macOS x86_64 | `macosx_11_0_x86_64` | 3.11, 3.15 |
 
-macOSのタグに含まれる11.0はビルド時のdeployment targetです。インストール試験はmacOS 15で行っています。
+The macOS wheels use a deployment target of 11.0. Installation tests run on macOS 15.
+
+For example, on Linux x86_64, install the downloaded wheel and check the CLI version.
 
 ```bash
 python -m pip install ./fusion_kit-0.1.0-cp311-abi3-manylinux_2_28_x86_64.whl
 fusion-kit --version
 ```
 
-## ソースからインストール
+## Install from source
 
-RustとCコンパイラを用意します。ビルドには同梱の `rust-toolchain.toml` と `Cargo.lock` を使います。
+You need Rust and a C compiler. The build uses the included `rust-toolchain.toml` and `Cargo.lock`.
 
 ```bash
 python -m pip install ./fusion_kit-0.1.0.tar.gz
 ```
 
-ソースチェックアウトからは、リポジトリのルートで `python -m pip install .` を実行します。
+To install from a source checkout, run `python -m pip install .` from the repository root.
 
-インストール後はPython APIと `fusion-kit` コマンドが使えます。 [APIとCLIの使い方](api.md)
+After installation, import `fusion_kit` in Python or use the `fusion-kit` command. [Python API and CLI reference](api.md)

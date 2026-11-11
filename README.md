@@ -1,16 +1,16 @@
 # fusion-kit
 
-Autodesk FusionのF3D・F3Zをローカルで読み取るPythonパッケージです。Rust製のパーサをPython APIとCLIから利用できます。実行時にAutodesk Fusionやクラウドサービスは不要です。
+fusion-kit is a Python package for reading Autodesk Fusion F3D and F3Z files locally. It exposes a Rust parser through a Python API and a command-line tool. Both run independently of Autodesk Fusion and cloud services.
 
-- ZIPメンバーの一覧・読取と、展開サイズ・CRCの検証。圧縮方式はStored、Deflate、Zstandardに対応。
-- F3DのManifest、アセットとセグメント、プレビュー画像の取得。
-- F3Zに含まれる文書の一覧、ルート文書、XREF・DERIVED参照の取得と整合性検査。
+- List and read ZIP members, and verify their uncompressed sizes and CRCs. Supports Stored, Deflate, and Zstandard compression.
+- Read F3D manifests, assets, segments, and preview images.
+- List documents in an F3Z package, identify the root document, and inspect and validate XREF and DERIVED references.
 
-## インストール
+## Installation
 
-通常版のCPython 3.11以上が必要です。対象環境のwheelを選ぶか、RustとCコンパイラを使ってソースからインストールできます。 [対応環境とインストール手順](docs/distribution.md)
+fusion-kit requires standard CPython 3.11 or later. Install the wheel for your platform, or build from source with Rust and a C compiler. [Supported platforms and installation](docs/distribution.md)
 
-## 使い方
+## Usage
 
 ```python
 import fusion_kit
@@ -29,12 +29,14 @@ fusion-kit inspect assembly.f3z --package --json
 fusion-kit verify assembly.f3z --json
 ```
 
-F3Zの検証は内側のF3Dも対象にします。外側のZIPだけを検証する場合はCLIの `--outer-only` またはPython APIの `verify(recursive=False)` を使います。 [Python API・CLI・JSONの仕様](docs/api.md) · [Python利用例](examples/inspect_fusion.py)
+F3Z verification includes the embedded F3D archives. To verify only the outer ZIP, pass `--outer-only` on the command line or call `verify(recursive=False)` in Python. [Python API, CLI, and JSON reference](docs/api.md) · [Python example](examples/inspect_fusion.py)
 
-## 対応範囲
+## Scope
 
-読み取り専用です。形状やB-Rep、部品の配置、設計履歴、STEP・GLB変換は未対応です。F3Zで取得する文書参照は設計間の依存を表します。アーカイブを開く操作ではZIP索引を読み取り、全メンバーのCRCやサイズは `verify()` で検証します。
+fusion-kit provides read-only access to archive structure and document metadata. F3Z document references describe dependencies between designs. Geometry, B-rep, component placements, design history, and STEP or GLB conversion are outside the current scope.
 
-## ライセンス
+Opening an archive reads its ZIP index. Call `verify()` to check every member's CRC and size.
 
-fusion-kitのコードはMITライセンスです。依存ライブラリのライセンスと形式資料の出典を同梱しています。 [MITライセンス](LICENSE) · [第三者通知](THIRD_PARTY_NOTICES.txt) · [Rust標準ライブラリの通知](RUST_STDLIB_COPYRIGHT.html)
+## License
+
+fusion-kit is licensed under the MIT License. Distributions include dependency notices and credits for the format references. [MIT License](LICENSE) · [Third-party notices](THIRD_PARTY_NOTICES.txt) · [Rust standard library notices](RUST_STDLIB_COPYRIGHT.html)

@@ -1,9 +1,8 @@
-# Python API・JSON契約
+# Python API and JSON reference
 
-v0.1はF3D / F3Zの読み取り専用APIを提供する。通常のCPython 3.11以上を対象とし、解析結果のnative viewは直接構築・継承・書換えしない。
-入口は`fusion_kit.readfile(path)`と`fusion_kit.read(data)`。`Limits`だけは利用者が構築できる。
+fusion-kit v0.1 provides a read-only API for F3D and F3Z files on standard CPython 3.11 and later. Use `fusion_kit.readfile(path)` or `fusion_kit.read(data)` to open an archive. Construct `Limits` directly to configure resource limits. The reader creates the result objects as immutable views.
 
-## 入力と解析scope
+## Inputs and operations
 
 ```python
 from pathlib import Path
@@ -22,78 +21,70 @@ report = archive.verify(strict=False)
 print(info.exit_code, report.exit_code)
 ```
 
-実行可能な例を同梱する。 [文書とパッケージのJSON取得](../examples/inspect_fusion.py) · [文書ごとのプレビュー取得](../examples/package_members.py)
+See the runnable examples for [document and package JSON](../examples/inspect_fusion.py) and [previews for individual documents](../examples/package_members.py).
 
-| 操作 | scopeと返却値 |
+| Operation | Scope and return value |
 |---|---|
-| `readfile(str / PathLike[str])` / `read(bytes)` | 所有するsnapshotとZIP索引。可変bufferは受け付けない |
-| `archive.members` / `read_member(name)` | 外側ZIP。読取時に展開量・サイズ・CRCを検証してbytesを返す |
-| `archive.read_document()` | F3Dの`DocumentInfo`。Manifest、asset / segment、未知領域 |
-| `archive.read_package()` | F3Zの`PackageInfo`。root、文書依存、Redirections照合 |
-| `archive.documents` | F3Dでは`list[DocumentInfo]`、F3Zでは`list[PackageDocument]` |
-| `archive.references` / `root_document_id` | package参照、または対象文書ID。未対応scopeでは例外 |
-| `archive.open_document(id, *, strict=None)` | F3Zのchild `Archive`。IDはpackage内のmember path |
-| `archive.get_preview(*, document_id=None, strict=None)` | rootまたは指定文書の画像bytes。不在は`None`、空memberは`b""` |
-| `archive.read_span(region)` | source hash・範囲・領域hashを検証して未知領域の原bytesを取得 |
-| `archive.verify(*, strict=True, recursive=True)` | F3Z内archiveを含むZIP検証。`recursive=False`なら外側のみ |
+| `readfile(str / PathLike[str])` or `read(bytes)` | An owned snapshot and ZIP index. In-memory input must be immutable `bytes`. |
+| `archive.members` or `archive.read_member(name)` | List the outer ZIP members or return one member as `bytes`, checking decompression limits, size, and CRC. |
+| `archive.read_document()` | F3D `DocumentInfo` with the manifest, assets, segments, and spans for unparsed regions. |
+| `archive.read_package()` | F3Z `PackageInfo` with the root, document dependencies, and checks against the redirection data. |
+| `archive.documents` | `list[DocumentInfo]` for F3D or `list[PackageDocument]` for F3Z. |
+| `archive.references` or `archive.root_document_id` | Package references or the root document ID. Raises an exception for unsupported scopes. |
+| `archive.open_document(id, *, strict=None)` | The child `Archive` for a member path in the F3Z package. |
+| `archive.get_preview(*, document_id=None, strict=None)` | Image bytes for the root or selected document. Returns `None` for an absent preview and `b""` for an empty member. |
+| `archive.read_span(region)` | The original bytes of an unparsed region after checking the source hash, byte range, and region hash. |
+| `archive.verify(*, strict=True, recursive=True)` | ZIP verification, including embedded archives in an F3Z. Pass `recursive=False` to verify only the outer ZIP. |
 
-`readfile` / `read`は索引までを読み、文書・packageは遅延解析する。
-索引の成功はCRC・文書依存・形状の成功を意味しない。`archive.status` / `archive.issues` / `archive.to_dict()`は索引の結果を保持する。
-文書の診断は`read_document().issues`、packageは`read_package().issues`、全量検証は`verify().issues`へ返す。
+`readfile()` and `read()` build the ZIP index. The reader parses document and package metadata on demand. Use `verify()` for CRC checks and `read_package()` for dependency checks. `archive.status`, `archive.issues`, and `archive.to_dict()` describe the index. Read operation-specific diagnostics through `read_document().issues`, `read_package().issues`, or `verify().issues`.
 
-F3Dの文書IDはFusion GUID。F3Zの`PackageDocument.id`はmember pathで、`package_sha256`と組にして識別する。
-Fusion GUIDは`document_guid`、graph内の数値IDは`graph_index`と組にして保持する。
-root不明時に先頭文書を選ばず、文書数・参照数からOccurrenceやbody数を生成しない。
+An F3D document uses its Fusion GUID as its ID. An F3Z `PackageDocument.id` is a member path scoped to `package_sha256`. The Fusion GUID is available as `document_guid`. A numeric graph ID is scoped to its `graph_index`. `PackageInfo.root_document_id` is `None` when the root is unresolved. Document and reference counts describe dependencies between designs.
 
-## strictと状態
+## Strict mode and status
 
-| 設定 | 意味 |
+| Setting | Behavior |
 |---|---|
-| `readfile/read(strict=True)` | ZIP索引で検出した未対応entryを例外にする。metadataの解析は要求時 |
-| `read_document/read_package/open_document/get_preview(strict=None)` | 入力時設定を継承。明示したboolはその操作だけに適用 |
-| `documents/references/root_document_id` | 入力時strict設定を使用 |
-| `verify(strict=True)` | 入力時設定とは独立して、失敗時にreport付き例外を返す |
+| `readfile/read(strict=True)` | Raises for unsupported entries encountered during ZIP indexing. Metadata is parsed on demand. |
+| `read_document/read_package/open_document/get_preview(strict=None)` | Inherits the setting from the archive. An explicit Boolean applies to that operation. |
+| `documents/references/root_document_id` | Uses the archive's strict setting. |
+| `verify(strict=True)` | Uses its own strict setting. Verification failures raise an exception with the available report. |
 
-`open_document`で生成したchildは、その操作で選んだstrict設定を継承する。親の設定とcache済み情報は変更しない。
-`strict=False`でも破損、上限超過、読取不能を無条件に受理しない。参照上の矛盾は、安全に検査できた`invalid`情報として取得できる。
-未解析のcollectionは`None`、解析済みの空collectionは`[]`、要求していない層は`not_requested`で区別する。
+A child archive created by `open_document()` inherits the strict setting selected for that call. The parent retains its settings and cached data. With `strict=False`, the reader can return an `invalid` result for inconsistent references when it can safely examine them. Corrupt or unreadable inputs and resource-limit failures can still raise exceptions.
 
-| status | exit_code | 意味 |
+`None` represents an unparsed collection. An empty list represents a parsed collection with no items. A layer omitted from the request has status `not_requested`.
+
+| Status | Exit code | Meaning |
 |---|---:|---|
-| `complete` | 0 | 要求したscopeを完了 |
-| `partial` | 2 | 安全に保持できる部分結果・warningあり |
-| `unsupported` | 2 | 未対応schema・形式あり |
-| `invalid` | 1 | 破損や整合性の失敗 |
+| `complete` | 0 | The requested operation completed. |
+| `partial` | 2 | The reader retained partial results or reported a warning. |
+| `unsupported` | 2 | The input uses an unsupported schema or feature. |
+| `invalid` | 1 | The reader detected corruption or an integrity failure. |
 
-viewと例外の`exit_code`はRustの同じ判定を使う。primary診断のseverityだけでscope全体のstatusを再判定しない。
+Result views and exceptions use the same exit-code mapping. Use the reported status for the entire operation.
 
-## 例外と診断
+## Exceptions and diagnostics
 
-`FusionError`を基底に`FormatError`、`UnsupportedFeatureError`、`ReferenceResolutionError`、`ResourceLimitError`を返す。
-ファイルの不存在・権限はPythonの`FileNotFoundError` / `PermissionError`、未知member / 文書IDは`KeyError`を維持する。
-`Limits`の設定値不正は`ValueError` / `OverflowError`。CLIではこれらもinvalid JSONへ変換する。
+`FormatError`, `UnsupportedFeatureError`, `ReferenceResolutionError`, and `ResourceLimitError` derive from `FusionError`. Missing files and permission failures raise Python's `FileNotFoundError` and `PermissionError`. Unknown members or document IDs raise `KeyError`. Invalid `Limits` values raise `ValueError` or `OverflowError`. With `--json`, the CLI reports file I/O and argument errors as `invalid` results.
 
-readerのパース・読取・検証で返す例外には次の属性がある。引数の型・Limits設定値の例外は除く。builtin例外の追加属性は必要に応じて`getattr`で取得できる。
+Exceptions from parsing, member reads, and verification expose the attributes below. Argument type errors and invalid `Limits` settings use Python's argument exceptions. Use `getattr()` when accessing additional attributes on built-in exceptions.
 
-- `code / stage / source / member / offset / offset_basis / context / message`：primary診断。
-- `diagnostic`：primary診断のdict。`issues`：利用可能な全診断の読み取り専用view。
-- `status / exit_code`：失敗した要求scopeの状態。strictによるpartial拒否もpartial / 2を保つ。
-- `report`：全量検証の途中結果。利用できなければ`None`。
-- `result`：`schema_version / status / issues / report`を持つJSONエラー表現。
+| Attributes | Meaning |
+|---|---|
+| `code`, `stage`, `source`, `member`, `offset`, `offset_basis`, `context`, `message` | Fields of the primary diagnostic. |
+| `diagnostic`, `issues` | The primary diagnostic as a dictionary and a read-only view of the available diagnostics. |
+| `status`, `exit_code` | Status and exit code of the requested operation. Strict mode preserves `partial` and exit code 2 when it raises for a partial result. |
+| `report` | The verification report collected so far, or `None` when unavailable. |
+| `result` | JSON error representation with `schema_version`, `status`, `issues`, and `report`. |
 
-`member`は実memberまたは欠落した対象名、`context`はJSON / graph内の論理位置。JSON Pointer形式とは定義しない。
-inner Redirectionsの診断は`source="親!child.f3d"`、`member="RedirectionsStream.dat"`のように分離する。
-`source`は表示用のsnapshot名で、永続IDにはsource SHA-256とpackage内IDを使う。
+`member` identifies an archive member or the expected name of a missing member. `context` describes a logical location in JSON or a graph. Treat it as diagnostic text. For example, a diagnostic from an embedded redirection stream can have `source="parent!child.f3d"` and `member="RedirectionsStream.dat"`. Use the source SHA-256 and package member ID for persistent identification. The `source` string is a display name.
 
-offsetは0始まり。`offset_basis="archive"`はZIP headerや圧縮payload先頭、`"member"`は展開後Manifestのcursor / 候補位置を表す。
-正確な位置がなければoffsetとbasisは`None`。検出位置と実際の破損byteを同一視しない。
+Offsets are zero-based. An `offset_basis` of `"archive"` identifies a ZIP header or the start of a compressed payload. A basis of `"member"` identifies a cursor or candidate location in the decompressed manifest. Both fields are `None` when a precise position is unavailable. The offset identifies where the reader detected the issue.
 
-## JSONと型
+## JSON and typing
 
-`to_dict()`は独立したコピー、`to_json()`は同じschemaのJSON文字列を返す。返却dict / listを書き換えてもnative cacheは変化しない。
-`fusion_kit.types`に`Status` / `ExitCode`等のLiteralと`ArchiveJSON` / `DocumentJSON` / `PackageJSON` / `ValidationJSON` / `ErrorJSON`等のTypedDictを提供する。
-schema_versionは1。sidecarの未解釈値は再帰的な`JSONValue`、未知の参照種別は`str | None`と元JSONで保持する。
-未知のgeometryやbody数を補完するfieldは提供しない。
+`to_dict()` returns a detached copy. `to_json()` returns a JSON string with the same schema. You can edit the returned dictionaries and lists independently of the reader.
+
+`fusion_kit.types` exports literals such as `Status` and `ExitCode`, and typed dictionaries including `ArchiveJSON`, `DocumentJSON`, `PackageJSON`, `ValidationJSON`, and `ErrorJSON`. The current `schema_version` is 1. Unparsed sidecar values use the recursive `JSONValue` type. Unknown reference kinds are retained as `str | None` alongside the original JSON.
 
 ## CLI
 
@@ -105,6 +96,6 @@ fusion-kit verify assembly.f3z --json
 fusion-kit verify assembly.f3z --outer-only --json
 ```
 
-CLIはpartialを含む情報を表示し、上表の終了コードを返す。
-`--json`では引数エラーも含め、stdoutに1つのJSONを返す。`--help` / `--version`は通常のtext出力・exit 0。
-`--document`と`--package`は排他的。引数エラーは`invalid`と終了コード1を返す。
+The CLI includes partial results when available and uses the exit codes in the status table. With `--json`, it writes one JSON result to stdout, including for argument errors. `--help` and `--version` print text and return exit code 0.
+
+`--document` and `--package` are mutually exclusive. Argument errors return `invalid` and exit code 1.
